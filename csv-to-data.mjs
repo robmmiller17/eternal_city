@@ -85,7 +85,13 @@ ${lines.join("\n")}
 // <<< CITY DATA END`;
 
 const jsx = readFileSync(jsxPath, "utf8");
-const updated = jsx.replace(/\/\/ >>> CITY DATA START[\s\S]*?\/\/ <<< CITY DATA END/, block);
-if (updated === jsx) { console.error("Markers not found in " + jsxPath); process.exit(1); }
+const MARKERS = /\/\/ >>> CITY DATA START[\s\S]*?\/\/ <<< CITY DATA END/;
+if (!MARKERS.test(jsx)) {
+  console.error("Markers not found in " + jsxPath);
+  process.exit(1);
+}
+const updated = jsx.replace(MARKERS, block);
 writeFileSync(jsxPath, updated);
-console.log(`OK: ${cards.length} cards written into ${jsxPath}`);
+console.log(updated === jsx
+  ? `OK: no changes needed — CSV already matches the ${cards.length} cards in ${jsxPath}`
+  : `OK: ${cards.length} cards written into ${jsxPath}`);
