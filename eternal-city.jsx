@@ -453,14 +453,14 @@ const ROMAN = ["I", "II", "III", "IV", "V"];
 
 
 const FAQ = [
-  ["What is Eternal City?", "A daily draft game. History deals you five random era-and-region combinations. From each, you take a single attribute from a single city. The five attributes form one amalgam civilization, which then faces ten trials — one per century. Survive all ten and you've built an Eternal City."],
+  ["What is Eternal City?", "A daily draft game. History deals you five random era-and-region combinations. From each, you take a single attribute from a single city. The five attributes form one amalgam civilization, which then faces ten trials, one per century. Survive all ten and you've built an Eternal City."],
   ["How does drafting work?", "Each round shows you an era and region, and the cities that peaked there. You claim ONE attribute from ONE city — its Scale, Wealth, Culture, Knowledge, or Might. Each attribute slot can only be filled once, so by the end your civilization has exactly one city behind each stat."],
-  ["Can I draft the same city twice?", "No. Each city may serve only once across all of history — drafting Ancient Rome locks out every other Rome. Renamed cities count as the same city: Edo is Tokyo, Constantinople is Istanbul, Bombay is Mumbai, and Tenochtitlan is Mexico City (same site)."],
+  ["Can I draft the same city twice?", "No. Each city may serve only once across all of history — drafting Ancient Rome locks out every other Rome. Renamed cities count as the same city: Edo is Tokyo, Constantinople is Istanbul, Bombay is Mumbai, etc."],
   ["What are the rerolls?", "One era reroll and one region reroll per run. The era reroll swaps the current round's era for an unused one; the region reroll redraws the region within the same era. Once used, they're gone."],
-  ["How are cities rated?", "Ratings (0–99) are editorial — call them Historian Ratings — and they are era-adjusted: a city is rated against its own world, not ours. Tang Chang'an's 99 Scale means it dominated the 8th century the way nothing dominates today. Disagree with a rating? That's half the fun."],
-  ["How do the trials work?", "Your civilization faces 10 trials, each keyed to one or two attributes and each with a visible difficulty between 58 and 92. You pass if your relevant attribute score, plus a fortune roll between −10 and +10, meets the difficulty. The math is shown on every trial."],
+  ["How are cities rated?", "Ratings (0–99) are editorial and era-adjusted: a city is rated against its own world, not ours. Tang Chang'an's 99 Scale means it dominated the 8th century the way nothing dominates today. Disagree with a rating? That's half the fun."],
+  ["How do the trials work?", "Your civilization faces 10 trials, each keyed to one or two attributes and each with a visible difficulty between 58 and 92. You pass if your relevant attribute score, plus a fortune roll between −10 and +10, meets the difficulty."],
   ["What is a Dark Age?", "Your first failed trial doesn't end you — a Dark Age descends, that century is lost, and your civilization rebuilds. A second failure is collapse. Rome got sacked and recovered; so can you, once."],
-  ["What counts as winning?", "Every trial passed is a century survived. Pass all ten — flawless, no Dark Age — and you reach 1,000 years: an Eternal City. Anything less is measured in centuries endured."],
+  ["What counts as winning?", "Every trial passed is a century survived. Pass all ten with no Dark Age and you've built an Eternal City. Anything less is measured in centuries endured."],
   ["What's the difference between Daily and Free Play?", "The Daily deals every player the identical eras, regions, trials, difficulties, and fortune rolls — the only variable is what you draft, so identical rosters always produce identical results. Free Play is fully random every run."],
   ["What is Historian Mode?", "All ratings are hidden until the trials begin. You draft on the strength of names alone — was Kaifeng a Wealth city or a Might city? — and find out what you knew when the trials judge you."],
 ];
@@ -510,7 +510,49 @@ export default function EternalCity() {
   const [trials, setTrials] = useState([]); // resolved results
   const [revealed, setRevealed] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [landed, setLanded] = useState(false); // current round's combo revealed?
+  const [reel, setReel] = useState(null); // { era, region, dispEra, dispRegion } while spinning
+  const spinTimer = useRef(null);
   const logEnd = useRef(null);
+
+  useEffect(() => () => clearTimeout(spinTimer.current), []);
+
+  // The reels are theater: the result is already decided, the spin just lands on it.
+  // Cosmetic cycling uses Math.random so the seeded daily stream is untouched.
+  function spinReels(which) {
+    clearTimeout(spinTimer.current);
+    const eraKeys = ERAS.map((e) => e.key);
+    const regionKeys = Object.keys(REGIONS);
+    const spinEra = which !== "region";
+    const spinRegion = which !== "era";
+    let ei = Math.floor(Math.random() * eraKeys.length);
+    let ri = Math.floor(Math.random() * regionKeys.length);
+    const start = Date.now();
+    let delay = 65;
+    setLanded(false);
+    const tick = () => {
+      if (Date.now() - start >= 3000 - delay) {
+        // Settle on the result, hold a beat, then reveal the rest.
+        setReel((r) => ({ ...r, settled: true }));
+        spinTimer.current = setTimeout(() => {
+          setReel(null);
+          setLanded(true);
+        }, 650);
+        return;
+      }
+      ei = (ei + 1) % eraKeys.length;
+      ri = (ri + 1) % regionKeys.length;
+      setReel({
+        era: spinEra,
+        region: spinRegion,
+        dispEra: eraKeys[ei],
+        dispRegion: regionKeys[ri],
+      });
+      delay = Math.min(delay * 1.14, 360); // decelerate like a tiring wheel
+      spinTimer.current = setTimeout(tick, delay);
+    };
+    tick();
+  }
 
   function startRun(isDaily) {
     const seed = isDaily ? hashStr("ETERNAL-" + todayISO()) : Math.floor(Math.random() * 2 ** 31);
@@ -528,6 +570,9 @@ export default function EternalCity() {
     setTrials([]);
     setRevealed(0);
     setCopied(false);
+    clearTimeout(spinTimer.current);
+    setReel(null);
+    setLanded(false);
     setPhase("draft");
   }
 
@@ -537,32 +582,42 @@ export default function EternalCity() {
   const pool = cur ? poolFor(cur.era, cur.region, usedKeys) : [];
 
   function doEraSkip() {
-    if (!eraSkip) return;
+    if (!eraSkip || reel || !landed) return;
     const rnd = rngRef.current;
     const used = rounds.map((r) => r.era);
     const remaining = ERAS.map((e) => e.key).filter((k) => !used.includes(k));
     if (!remaining.length) return;
     const newEra = remaining[Math.floor(rnd() * remaining.length)];
+    // Keep the current region when it still has cities in the new era,
+    // so only the era reel spins; otherwise both reels go.
+    const keepRegion = poolFor(newEra, cur.region, usedKeys).length >= 2;
     const next = [...rounds];
-    next[round] = { era: newEra, region: pickRegion(newEra, rnd, usedKeys, null) };
+    next[round] = {
+      era: newEra,
+      region: keepRegion ? cur.region : pickRegion(newEra, rnd, usedKeys, null),
+    };
     setRounds(next);
     setEraSkip(false);
+    spinReels(keepRegion ? "era" : "both");
   }
 
   function doRegionSkip() {
-    if (!regionSkip) return;
+    if (!regionSkip || reel || !landed) return;
     const rnd = rngRef.current;
     const next = [...rounds];
     next[round] = { ...cur, region: pickRegion(cur.era, rnd, usedKeys, cur.region) };
     setRounds(next);
     setRegionSkip(false);
+    spinReels("region");
   }
 
   function pickCity(city, slot) {
     const newPicks = [...picks, { ...city, slot }];
     setPicks(newPicks);
-    if (round < 4) setRound(round + 1);
-    else runSim(newPicks);
+    if (round < 4) {
+      setRound(round + 1);
+      setLanded(false); // next round waits for its spin
+    } else runSim(newPicks);
   }
 
   function runSim(finalPicks) {
@@ -589,7 +644,7 @@ export default function EternalCity() {
         wounds += 1;
         if (wounds === 1) {
           kind = "darkage";
-          text = t.fail + " A Dark Age descends — your civilization reels, but rebuilds.";
+          text = t.fail + " A Dark Age descends. Your civilization reels, but rebuilds.";
         } else {
           kind = "collapse";
           text = t.fail;
@@ -663,13 +718,13 @@ export default function EternalCity() {
             <p style={{ fontFamily: DISPLAY, fontSize: 16, lineHeight: 1.6, color: C.marble, textAlign: "center" }}>
               History deals you a random <span style={{ color: C.gold }}>era</span> and{" "}
               <span style={{ color: C.gold }}>region</span>. Take a single attribute from a single
-              city — its Scale, Wealth, Culture, Knowledge, or Might. Five picks fill five slots,
+              city: Scale, Wealth, Culture, Knowledge, or Might. Five picks fill five slots,
               one per era, and each city may serve only once across all of history. One era reroll,
               one region reroll.
             </p>
             <p style={{ fontFamily: DISPLAY, fontSize: 16, lineHeight: 1.6, color: C.dim, textAlign: "center" }}>
-              Then your civilization faces ten trials of rising and falling difficulty — plague, siege,
-              schism, collapse. Each trial endured is a century. One failure is a Dark Age you can
+              Then your civilization faces ten trials of rising and falling difficulty: plague, siege,
+              schism, collapse, etc. Each trial endured is a century. One failure is a Dark Age you can
               rebuild from. A second is the end. Can you last 1,000 years?
             </p>
             <div className="flex flex-col items-center gap-3 mt-2">
@@ -709,7 +764,7 @@ export default function EternalCity() {
               ))}
             </div>
             <p style={{ ...CAPS, fontSize: 9, color: C.dim, textAlign: "center" }}>
-              Ratings are era-adjusted · Tang Chang'an is rated against its world, not ours
+              Ratings are era-adjusted
             </p>
             <FaqSection />
           </div>
@@ -738,21 +793,45 @@ export default function EternalCity() {
 
             {/* the spin plaque */}
             <Plaque style={{ textAlign: "center", padding: "18px 16px" }}>
-              <div style={{ ...CAPS, fontSize: 10, color: C.dim }}>History deals you</div>
-              <div style={{ fontFamily: DISPLAY, fontSize: 26, color: C.gold, marginTop: 4 }}>
-                {ERAS.find((e) => e.key === cur.era).label}
-                <span style={{ fontSize: 15, color: C.dim }}> · {ERAS.find((e) => e.key === cur.era).range}</span>
+              <div style={{ ...CAPS, fontSize: 10, color: C.dim }}>
+                {landed || reel?.settled ? "History deals you" : reel ? "The wheel turns…" : "Spin for your era and region"}
               </div>
-              <div style={{ fontFamily: DISPLAY, fontSize: 18, color: C.marble, marginTop: 2 }}>{REGIONS[cur.region]}</div>
-              <div className="flex justify-center gap-3 mt-3">
-                <Btn onClick={doEraSkip} disabled={!eraSkip}>↻ Reroll era {eraSkip ? "" : "· used"}</Btn>
-                <Btn onClick={doRegionSkip} disabled={!regionSkip}>↻ Reroll region {regionSkip ? "" : "· used"}</Btn>
-              </div>
+              {landed ? (
+                <>
+                  <div style={{ fontFamily: DISPLAY, fontSize: 26, color: C.gold, marginTop: 4 }}>
+                    {ERAS.find((e) => e.key === cur.era).label}
+                    <span style={{ fontSize: 15, color: C.dim }}> · {ERAS.find((e) => e.key === cur.era).range}</span>
+                  </div>
+                  <div style={{ fontFamily: DISPLAY, fontSize: 18, color: C.marble, marginTop: 2 }}>{REGIONS[cur.region]}</div>
+                  <div className="flex justify-center gap-3 mt-3">
+                    <Btn onClick={doEraSkip} disabled={!eraSkip}>↻ Reroll era {eraSkip ? "" : "· used"}</Btn>
+                    <Btn onClick={doRegionSkip} disabled={!regionSkip}>↻ Reroll region {regionSkip ? "" : "· used"}</Btn>
+                  </div>
+                </>
+              ) : reel ? (
+                <>
+                  <div style={{ fontFamily: DISPLAY, fontSize: 26, marginTop: 4, color: C.gold }}>
+                    {ERAS.find((e) => e.key === (reel.era && !reel.settled ? reel.dispEra : cur.era)).label}
+                  </div>
+                  <div style={{ fontFamily: DISPLAY, fontSize: 18, marginTop: 2, color: C.marble }}>
+                    {REGIONS[reel.region && !reel.settled ? reel.dispRegion : cur.region]}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontFamily: DISPLAY, fontSize: 26, color: C.line, marginTop: 4, letterSpacing: "0.3em" }}>· · ·</div>
+                  <div className="flex justify-center mt-3">
+                    <Btn kind="gold" onClick={() => spinReels("both")} style={{ width: 180, padding: "10px 0", fontSize: 12 }}>
+                      Spin
+                    </Btn>
+                  </div>
+                </>
+              )}
             </Plaque>
 
-            {/* city pool */}
+            {/* city pool — revealed once the reels land */}
             <div className="flex flex-col gap-2">
-              {pool.map((city) => (
+              {landed && pool.map((city) => (
                 <div
                   key={city.id}
                   className="rounded-lg text-left px-4 py-3 w-full"
@@ -787,7 +866,7 @@ export default function EternalCity() {
 
             {/* roster so far */}
             <div>
-              <div style={{ ...CAPS, fontSize: 9, color: C.dim, marginBottom: 6 }}>Your amalgam civilization</div>
+              <div style={{ ...CAPS, fontSize: 9, color: C.dim, marginBottom: 6 }}>Your Eternal City</div>
               <div className="flex flex-col gap-1">
                 {STAT_KEYS.map((_, i) => {
                   const owner = picks.find((p) => p.slot === i);
