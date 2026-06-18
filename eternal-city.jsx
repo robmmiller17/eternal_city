@@ -24,14 +24,14 @@ const CAPS = { fontFamily: DISPLAY, textTransform: "uppercase", letterSpacing: "
 
 // ---------- eras & regions ----------
 const ERAS = [
-  { key: "ancient", label: "Ancient", range: "before 500", blurb: "From the first cities to the fall of Rome." },
-  { key: "medieval", label: "Medieval", range: "500–1300", blurb: "Caliphates, khanates, and cathedral towns." },
-  { key: "renaissance", label: "Renaissance", range: "1300–1600", blurb: "Print, perspective, and the first global maps." },
-  { key: "earlymodern", label: "Early Modern", range: "1600–1800", blurb: "Gunpowder empires and ocean trade." },
-  { key: "industrial", label: "Industrial", range: "1800–1900", blurb: "Steam, rail, and cities of millions." },
-  { key: "early20", label: "Early 20th C.", range: "1900–1950", blurb: "Electric nights, world wars, the radio age." },
-  { key: "postwar", label: "Postwar", range: "1950–2000", blurb: "Superpowers, economic miracles, megacities." },
-  { key: "contemporary", label: "Contemporary", range: "2000–today", blurb: "The networked planet." },
+  { key: "ancient", label: "Ancient", range: "before 500" },
+  { key: "medieval", label: "Medieval", range: "500–1300" },
+  { key: "renaissance", label: "Renaissance", range: "1300–1600" },
+  { key: "earlymodern", label: "Early Modern", range: "1600–1800" },
+  { key: "industrial", label: "Industrial", range: "1800–1900" },
+  { key: "early20", label: "Early 20th C.", range: "1900–1950" },
+  { key: "postwar", label: "Postwar", range: "1950–2000" },
+  { key: "contemporary", label: "Contemporary", range: "2000–today" },
 ];
 const REGIONS = {
   WE: "Western Europe",
@@ -1090,9 +1090,6 @@ export default function EternalCity() {
                     <span style={{ fontSize: 15, color: C.dim }}> · {ERAS.find((e) => e.key === cur.era).range}</span>
                   </div>
                   <div style={{ fontFamily: DISPLAY, fontSize: 18, color: C.marble, marginTop: 2 }}>{REGIONS[cur.region]}</div>
-                  <div style={{ fontFamily: DISPLAY, fontStyle: "italic", fontSize: 12, color: C.dim, marginTop: 4 }}>
-                    {ERAS.find((e) => e.key === cur.era).blurb}
-                  </div>
                   <div className="flex justify-center gap-3 mt-3">
                     <Btn onClick={doEraSkip} disabled={!eraSkip}>↻ Reroll era {eraSkip ? "" : "· used"}</Btn>
                     <Btn onClick={doRegionSkip} disabled={!regionSkip}>↻ Reroll region {regionSkip ? "" : "· used"}</Btn>
@@ -1129,7 +1126,6 @@ export default function EternalCity() {
                 >
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span style={{ fontFamily: DISPLAY, fontSize: 21, color: C.marble }}>{city.name}</span>
-                    <span style={{ ...CAPS, fontSize: 9, color: C.verdigris }}>{city.ep}</span>
                   </div>
                   {!historian && (
                     <div style={{ fontFamily: DISPLAY, fontStyle: "italic", fontSize: 12, color: C.dim, marginTop: 2 }}>
@@ -1347,7 +1343,7 @@ export default function EternalCity() {
                       <div key={p.id} className="rounded-lg px-4 py-3" style={{ background: C.slab, border: `1px solid ${C.line}` }}>
                         <div className="flex items-baseline justify-between gap-2 flex-wrap">
                           <span style={{ fontFamily: DISPLAY, fontSize: 16, color: C.marble }}>
-                            {eraName(p)} <span style={{ ...CAPS, fontSize: 9, color: C.verdigris }}>{p.ep}</span>
+                            {eraName(p)}
                           </span>
                           <span style={{ ...CAPS, fontSize: 10, color: C.gold }}>{STAT_LABELS[p.slot]} {p.s[p.slot]}</span>
                         </div>
