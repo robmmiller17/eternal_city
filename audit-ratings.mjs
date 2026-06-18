@@ -33,14 +33,14 @@ function parseCSV(text) {
 
 // --- game constants (mirror eternal-city.jsx) ---
 const ERAS = ["ancient", "medieval", "renaissance", "earlymodern", "industrial", "early20", "postwar", "contemporary"];
-const REGIONS = ["EU", "EA", "SA", "ME", "AF", "AM"];
+const REGIONS = ["WE", "SEU", "CEE", "CN", "JK", "SAS", "SEA", "MEC", "NAF", "WAF", "EAF", "NAM", "LAM"];
 const STAT_LABELS = ["Scale", "Wealth", "Culture", "Knowledge", "Might"];
 const TRIAL_STATS = [[3,0],[4],[0,1],[1],[2],[2,4],[3],[4,2],[1,3],[0,1],[4,0],[2,3],[0,3],[0,4]];
 const LADDER = [58, 62, 66, 70, 74, 78, 82, 85, 88, 92];
 const SAME_CITY = {
   edo: "tokyo", constantinople: "istanbul", bombay: "mumbai", batavia: "jakarta",
   tenochtitlan: "mexico city", calcutta: "kolkata", madras: "chennai", rangoon: "yangon",
-  "chang'an": "xi'an",
+  "chang'an": "xi'an", saigon: "ho chi minh city",
 };
 
 // --- load cities ---
@@ -85,8 +85,13 @@ function draft(strategy) {
   const team = [0, 0, 0, 0, 0];
   let open = [0, 1, 2, 3, 4];
   for (const r of rounds) {
-    const pool = poolFor(r.era, r.region, used);
-    if (!pool.length) return null; // soft-lock: pool emptied by same-city locks
+    let pool = poolFor(r.era, r.region, used);
+    if (!pool.length) {
+      // mirror the game: emptied pools redraw their region for free
+      r.region = pickRegion(r.era, used, r.region);
+      pool = poolFor(r.era, r.region, used);
+      if (!pool.length) return null;
+    }
     const { city, slot } = strategy(pool, open);
     team[slot] = city.s[slot];
     used.add(city.cityKey);
@@ -181,6 +186,7 @@ const weak = [];
 for (const era of ERAS) {
   for (const region of REGIONS) {
     const pool = CITIES.filter((c) => c.era === era && c.region === region);
+    if (!pool.length) continue; // empty cells are never dealt
     const best = [0, 1, 2, 3, 4].map((i) => Math.max(...pool.map((c) => c.s[i])));
     const top = Math.max(...best);
     const great = best.filter((v) => v >= 85).length;

@@ -24,14 +24,30 @@ Evidence weighed per dimension:
 
 Expansion cards (the 55 added in June 2026) are deliberately second-tier, mostly 40s–80s with a few specialist spikes (Bukhara 88 Knowledge, Kamakura 82 Might). They add floor to thin pools, not ceiling, so flagship cities keep their value.
 
-## Audit results (200k simulated runs per strategy)
+## Regions (since the 13-region split)
+
+The original 6 regions were split into 13 so pools are thin and rerolls matter:
+Western Europe, Southern Europe, Central & Eastern Europe, China & Taiwan,
+Japan & Korea, South Asia, Southeast Asia, Middle East & Central Asia,
+North Africa, West & Central Africa, East & Southern Africa, North America,
+Latin America.
+
+Pool rules: an era/region cell may be empty (it is simply never dealt), but a
+cell with exactly 1 card is forbidden because the dealer requires 2+ cards, so
+the lone card would be unreachable; `csv-to-data.mjs` validates this. If
+same-city locks empty a dealt pool mid-draft, the game redraws the region for
+free without consuming the player's reroll.
+
+## Audit results (150k simulated runs per strategy, 13 regions)
 
 | strategy | eternal | 900+ yrs | median | collapse |
 |---|---|---|---|---|
-| pure random (random city, random slot) | 0.15% | 1.1% | 100 yrs | 98.9% |
-| casual (random city, its best slot) | 1.2% | 6.0% | ~200 yrs | 94.0% |
-| sharp play (best available stat each round) | ~24% | 59% | 900 yrs | 41% |
+| pure random (random city, random slot) | 0.14% | 1.0% | 100 yrs | 99.0% |
+| sharp play (best available stat each round) | ~8.4% | 28% | 500 yrs | 72% |
 | ceiling (99 in every slot) | 85.8% | — | — | — |
+
+Before the split, sharp play went eternal ~24% of the time with a median of
+900 years. Fragmenting the regions cut that to ~8% and 500 years.
 
 Key facts:
 
@@ -43,13 +59,9 @@ Levers if eternal should be rarer: add a 95 rung to the difficulty ladder, tight
 
 ## Trap pools (by design)
 
-Rerolls are strategic because some era/region draws have no great pick.
-
-Hard traps, no stat above 79:
-
-- **medieval / Americas** — peak 76 (Tikal's Culture)
-- **early modern / Sub-Saharan Africa** — peak 72 (Kano's Wealth)
-
-Soft traps, nothing at 85+: ancient/AF (peak 80), industrial/AF (84), early20/AF (84). Industrial/ME and early20/ME each hold exactly one 85+ option.
-
-Sub-Saharan Africa is the reroll-bait region in most pre-contemporary eras; with regions dealt uniformly, roughly 60% of games face at least one AF pool, so the reroll decision comes up most days. Every era/region pool holds at least 6 cities (target band 6–12).
+Rerolls are strategic because some era/region draws have no great pick. Under
+the 13-region split, 14 of the dealt pools have no stat above 79, including
+ancient/Western Europe, medieval/North America, medieval and early modern
+West & Central Africa, renaissance and postwar East & Southern Africa, and
+early20/Middle East & Central Asia. Run `node audit-ratings.mjs` for the full
+current grid; the trap list shifts whenever ratings or cards change.

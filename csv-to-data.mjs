@@ -31,7 +31,7 @@ function parseCSV(text) {
 }
 
 const ERAS = ["ancient", "medieval", "renaissance", "earlymodern", "industrial", "early20", "postwar", "contemporary"];
-const REGIONS = ["EU", "EA", "SA", "ME", "AF", "AM"];
+const REGIONS = ["WE", "SEU", "CEE", "CN", "JK", "SAS", "SEA", "MEC", "NAF", "WAF", "EAF", "NAM", "LAM"];
 
 const rows = parseCSV(readFileSync(csvPath, "utf8"));
 const header = rows[0].map((h) => h.trim().toLowerCase());
@@ -62,10 +62,11 @@ const cards = rows.slice(1).filter((r) => r.length > 1).map((r, n) => {
   return { name: r[col.name].trim(), ep: r[col.epithet].trim(), era, region, s, tag: r[col.tagline].trim() };
 });
 
-// pool-size guarantee: every era x region needs >= 2 cards (4+ recommended)
+// pool-size guarantee: empty era x region cells are fine (never dealt), but a
+// cell with exactly 1 card is unreachable — the dealer requires 2+ to deal it.
 for (const e of ERAS) for (const g of REGIONS) {
   const c = cards.filter((x) => x.era === e && x.region === g).length;
-  if (c < 2) errors.push(`pool too thin: ${e}/${g} has ${c} card(s) — minimum 2, recommend 4+`);
+  if (c === 1) errors.push(`unreachable card: ${e}/${g} has exactly 1 card — add another or remove it`);
 }
 
 if (errors.length) {
