@@ -1127,11 +1127,6 @@ export default function EternalCity() {
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span style={{ fontFamily: DISPLAY, fontSize: 21, color: C.marble }}>{city.name}</span>
                   </div>
-                  {!historian && (
-                    <div style={{ fontFamily: DISPLAY, fontStyle: "italic", fontSize: 12, color: C.dim, marginTop: 2 }}>
-                      {city.tag}
-                    </div>
-                  )}
                   <div className="flex flex-wrap gap-2 mt-2">
                     {STAT_KEYS.map((_, i) =>
                       openSlots.includes(i) ? (
